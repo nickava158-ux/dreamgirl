@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>DreamGirl AI</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --pink: #ff1480;
+    --pink-dim: rgba(255,20,128,0.15);
+    --bg: #0f0f0f;
+    --card: #1a1a1a;
+    --card2: #222222;
+    --text: #ffffff;
+    --text-dim: #888888;
+    --border: #2a2a2a;
+    --nav-h: 64px;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, 'SF Pro Display', 'Segoe UI', sans-serif; overflow: hidden; }
+
+  /* ---- SCREENS ---- */
+  .screen { position: absolute; inset: 0; bottom: var(--nav-h); overflow-y: auto; display: none; flex-direction: column; }
+  .screen.active { display: flex; }
+  .screen::-webkit-scrollbar { display: none; }
+
+  /* ---- TOP BAR ---- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 12px; position: sticky; top: 0; background: var(--bg); z-index: 10; }
+  .logo { display: flex; align-items: center; gap: 8px; }
+  .logo-icon { width: 32px; height: 32px; background: var(--pink); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+  .logo-text { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .btn-tokens-sm { background: transparent; border: 1.5px solid var(--pink); color: var(--pink); font-size: 13px; font-weight: 600; padding: 6px 14px; border-radius: 20px; cursor: pointer; }
+
+  /* ---- BOTTOM NAV ---- */
+  .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #141414; border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; cursor: pointer; color: var(--text-dim); transition: color .2s; }
+  .nav-item.active { color: var(--pink); }
+  .nav-item svg { width: 22px; height: 22px; }
+  .nav-label { font-size: 11px; font-weight: 500; }
+
+  /* ---- SETTINGS SCREEN ---- */
+  #screen-settings { padding-bottom: 12px; }
+  .user-row { display: flex; align-items: center; gap: 10px; padding: 4px 16px 16px; }
+  .avatar { width: 42px; height: 42px; background: var(--card2); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-dim); text-align: center; line-height: 1.2; overflow: hidden; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+  .username { font-size: 15px; font-weight: 600; }
+
+  .token-card { margin: 0 16px; background: var(--card); border-radius: 16px; padding: 18px; border: 1px solid var(--border); }
+  .token-label { font-size: 13px; color: var(--text-dim); margin-bottom: 4px; }
+  .token-amount { font-size: 42px; font-weight: 700; color: var(--pink); line-height: 1; margin-bottom: 2px; }
+  .token-status { font-size: 13px; color: var(--pink); margin-bottom: 16px; }
+  .token-stats { display: flex; gap: 0; border-top: 1px solid var(--border); padding-top: 14px; margin-bottom: 16px; }
+  .token-stat { flex: 1; text-align: center; }
+  .token-stat:first-child { border-right: 1px solid var(--border); }
+  .stat-label { font-size: 11px; color: var(--text-dim); margin-bottom: 4px; }
+  .stat-val { font-size: 20px; font-weight: 700; }
+  .btn-get { width: 100%; background: var(--pink); color: #fff; font-size: 16px; font-weight: 700; padding: 14px; border-radius: 12px; border: none; cursor: pointer; letter-spacing: 0.3px; }
+  .btn-get:active { opacity: .85; }
+
+  .section-title { font-size: 17px; font-weight: 700; padding: 20px 16px 12px; }
+  .activity-placeholder { margin: 0 16px; background: var(--card); border-radius: 12px; height: 140px; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-size: 14px; border: 1px solid var(--border); }
+  .activity-list { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; }
+  .activity-item { background: var(--card); border-radius: 12px; padding: 12px 14px; display: flex; align-items: center; gap: 12px; border: 1px solid var(--border); }
+  .activity-thumb { width: 44px; height: 44px; border-radius: 8px; background: var(--card2); object-fit: cover; flex-shrink: 0; }
+  .activity-info { flex: 1; min-width: 0; }
+  .activity-name { font-size: 14px; font-weight: 600; margin-bottom: 2px; }
+  .activity-action { font-size: 12px; color: var(--text-dim); }
+  .activity-time { font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+
+  /* ---- CHARACTERS SCREEN ---- */
+  #screen-characters { padding-bottom: 12px; }
+  .char-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 16px; }
+  .char-card { background: var(--card); border-radius: 14px; overflow: hidden; cursor: pointer; border: 1px solid var(--border); position: relative; aspect-ratio: 3/4; transition: transform .15s; }
+  .char-card:active { transform: scale(.97); }
+  .char-card img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .char-card-placeholder { width: 100%; height: 100%; background: linear-gradient(135deg, #1f1f1f 0%, #2a2a2a 100%); display: flex; align-items: center; justify-content: center; font-size: 40px; }
+  .char-card-info { position: absolute; bottom: 0; left: 0; right: 0; padding: 28px 10px 10px; background: linear-gradient(to top, rgba(0,0,0,.85) 0%, transparent 100%); }
+  .char-name { font-size: 15px; font-weight: 700; }
+  .char-tag { font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+  .char-lock { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,.6); border-radius: 6px; padding: 3px 6px; font-size: 11px; display: flex; align-items: center; gap: 3px; }
+  .char-free-badge { position: absolute; top: 8px; left: 8px; background: var(--pink); border-radius: 6px; padding: 3px 8px; font-size: 10px; font-weight: 700; }
+
+  /* ---- YOUR PHOTO SCREEN ---- */
+  #screen-photo { align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 20px; }
+  .photo-icon { width: 80px; height: 80px; background: var(--pink-dim); border-radius: 20px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
+  .photo-title { font-size: 22px; font-weight: 700; }
+  .photo-desc { font-size: 14px; color: var(--text-dim); line-height: 1.5; max-width: 260px; }
+  .photo-coming { font-size: 12px; color: var(--pink); font-weight: 600; background: var(--pink-dim); padding: 6px 16px; border-radius: 20px; }
+
+  /* ---- CHARACTER PROFILE (overlay) ---- */
+  .overlay { position: fixed; inset: 0; background: var(--bg); z-index: 200; display: none; flex-direction: column; overflow-y: auto; }
+  .overlay.visible { display: flex; }
+  .overlay::-webkit-scrollbar { display: none; }
+  .overlay-back { position: absolute; top: 16px; left: 16px; z-index: 20; background: rgba(0,0,0,.55); border: none; color: #fff; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: blur(6px); }
+
+  /* Gallery */
+  .gallery-wrap { width: 100%; aspect-ratio: 3/4; max-height: 62vh; position: relative; overflow: hidden; flex-shrink: 0; }
+  .gallery-track { display: flex; height: 100%; transition: transform .3s cubic-bezier(.4,0,.2,1); will-change: transform; }
+  .gallery-slide { min-width: 100%; height: 100%; position: relative; overflow: hidden; }
+  .gallery-slide img { width: 100%; height: 100%; object-fit: cover; display: block; user-select: none; pointer-events: none; }
+  .gallery-slide-ph { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 80px; }
+  .gallery-slide-blur { position: absolute; inset: 0; backdrop-filter: blur(22px); -webkit-backdrop-filter: blur(22px); background: rgba(0,0,0,.35); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
+  .gallery-slide-blur-icon { font-size: 40px; }
+  .gallery-slide-blur-btn { background: var(--pink); color: #fff; font-size: 14px; font-weight: 700; padding: 10px 22px; border-radius: 20px; border: none; cursor: pointer; }
+  .gallery-gradient { position: absolute; bottom: 0; left: 0; right: 0; height: 45%; background: linear-gradient(to top, var(--bg) 0%, transparent 100%); pointer-events: none; }
+
+  /* Dots */
+  .gallery-dots { position: absolute; bottom: 52px; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; pointer-events: none; }
+  .gallery-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.4); transition: all .2s; }
+  .gallery-dot.active { background: #fff; transform: scale(1.3); }
+  .gallery-dot.locked { background: rgba(255,20,128,.5); }
+  .gallery-dot.locked.active { background: var(--pink); }
+
+  /* Profile body */
+  .profile-body { padding: 0 16px 32px; }
+  .profile-name-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; padding-top: 4px; }
+  .profile-name { font-size: 28px; font-weight: 800; }
+  .profile-online { display: flex; align-items: center; gap: 5px; font-size: 13px; color: #4caf50; }
+  .profile-online-dot { width: 8px; height: 8px; background: #4caf50; border-radius: 50%; }
+  .profile-tags { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .profile-tag { background: var(--card2); border-radius: 20px; padding: 5px 12px; font-size: 12px; color: var(--text-dim); }
+  .profile-bio { font-size: 14px; color: var(--text-dim); line-height: 1.6; margin-bottom: 20px; }
+  .profile-btns { display: flex; flex-direction: column; gap: 10px; }
+  .profile-btn { display: flex; align-items: center; justify-content: space-between; border-radius: 14px; padding: 15px 18px; cursor: pointer; border: none; width: 100%; transition: opacity .15s; }
+  .profile-btn:active { opacity: .85; }
+  .profile-btn-left { display: flex; align-items: center; gap: 12px; }
+  .profile-btn-icon { width: 40px; height: 40px; border-radius: 11px; display: flex; align-items: center; justify-content: center; font-size: 19px; flex-shrink: 0; }
+  .profile-btn-label { font-size: 15px; font-weight: 700; color: #fff; text-align: left; }
+  .profile-btn-sub { font-size: 12px; opacity: .7; margin-top: 1px; color: #fff; }
+  .profile-btn-cost { font-size: 14px; font-weight: 800; color: #fff; opacity: .9; }
+
+  /* ---- CONTENT VIEWER (overlay) ---- */
+  .viewer { position: fixed; inset: 0; background: #000; z-index: 300; display: none; flex-direction: column; }
+  .viewer.visible { display: flex; }
+  .viewer-header { display: flex; align-items: center; justify-content: space-between; padding: 16px; position: absolute; top: 0; left: 0; right: 0; z-index: 10; background: linear-gradient(to bottom, rgba(0,0,0,.7) 0%, transparent 100%); }
+  .viewer-back { background: none; border: none; color: #fff; display: flex; align-items: center; gap: 6px; font-size: 15px; cursor: pointer; }
+  .viewer-title { font-size: 15px; font-weight: 600; }
+  .viewer-close { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; padding: 4px; }
+  .viewer-content { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .viewer-content img, .viewer-content video { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .viewer-locked { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center; padding: 32px; height: 100%; }
+  .viewer-locked-icon { font-size: 64px; }
+  .viewer-locked-title { font-size: 22px; font-weight: 700; }
+  .viewer-locked-desc { font-size: 14px; color: var(--text-dim); line-height: 1.5; }
+  .viewer-unlock-btn { background: var(--pink); color: #fff; font-size: 16px; font-weight: 700; padding: 14px 32px; border-radius: 14px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .viewer-unlock-btn:active { opacity: .85; }
+  .viewer-thumbs { display: flex; gap: 8px; padding: 12px 16px; overflow-x: auto; background: rgba(0,0,0,.8); }
+  .viewer-thumbs::-webkit-scrollbar { display: none; }
+  .viewer-thumb { width: 56px; height: 56px; border-radius: 8px; object-fit: cover; cursor: pointer; flex-shrink: 0; opacity: .6; border: 2px solid transparent; transition: all .15s; }
+  .viewer-thumb.active { opacity: 1; border-color: var(--pink); }
+  .viewer-thumb-placeholder { width: 56px; height: 56px; border-radius: 8px; background: var(--card2); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; border: 2px solid transparent; }
+  .viewer-thumb-placeholder.active { border-color: var(--pink); }
+
+  /* ---- BUY TOKENS SHEET ---- */
+  .sheet-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 400; display: none; align-items: flex-end; }
+  .sheet-overlay.visible { display: flex; }
+  .sheet { width: 100%; background: #1a1a1a; border-radius: 20px 20px 0 0; padding: 20px 16px 36px; }
+  .sheet-handle { width: 36px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 20px; }
+  .sheet-title { font-size: 20px; font-weight: 800; margin-bottom: 6px; }
+  .sheet-subtitle { font-size: 14px; color: var(--text-dim); margin-bottom: 20px; }
+  .token-packages { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+  .token-pkg { background: var(--card2); border-radius: 14px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; border: 2px solid transparent; transition: border-color .15s; }
+  .token-pkg.selected { border-color: var(--pink); }
+  .token-pkg-left { display: flex; align-items: center; gap: 12px; }
+  .token-pkg-icon { font-size: 24px; }
+  .token-pkg-name { font-size: 15px; font-weight: 700; }
+  .token-pkg-desc { font-size: 12px; color: var(--text-dim); margin-top: 1px; }
+  .token-pkg-price { font-size: 15px; font-weight: 700; color: var(--pink); }
+  .token-pkg-badge { background: var(--pink); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 10px; }
+  .btn-buy { width: 100%; background: var(--pink); color: #fff; font-size: 16px; font-weight: 700; padding: 15px; border-radius: 14px; border: none; cursor: pointer; }
+  .btn-buy:active { opacity: .85; }
+
+  /* ---- TOAST ---- */
+  .toast { position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px); background: #333; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 20px; border-radius: 20px; opacity: 0; transition: all .3s; z-index: 500; white-space: nowrap; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* ---- UTILS ---- */
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('characters')" id="nav-characters">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+    <span class="nav-label">Characters</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('photo')" id="nav-photo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    <span class="nav-label">Your photo</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('settings')" id="nav-settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/>
+    </svg>
+    <span class="nav-label">Settings</span>
+  </div>
+</nav>
+
+<!-- ===================== CHARACTERS SCREEN ===================== -->
+<div class="screen active" id="screen-characters">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">❤️</div>
+      <span class="logo-text">DreamGirl AI</span>
+    </div>
+    <button class="btn-tokens-sm" onclick="openSheet()">Get tokens</button>
+  </div>
+  <div class="char-grid" id="char-grid"></div>
+</div>
+
+<!-- ===================== YOUR PHOTO SCREEN ===================== -->
+<div class="screen" id="screen-photo">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">❤️</div>
+      <span class="logo-text">DreamGirl AI</span>
+    </div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center;">
+    <div class="photo-icon">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ff1480" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+        <circle cx="12" cy="13" r="4"/>
+      </svg>
+    </div>
+    <div class="photo-title">Your Photo</div>
+    <div class="photo-desc">Upload your photo and our AI will create an exclusive 18+ video just for you.</div>
+    <div class="photo-coming">✨ Coming soon</div>
+  </div>
+</div>
+
+<!-- ===================== SETTINGS SCREEN ===================== -->
+<div class="screen" id="screen-settings">
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-icon">❤️</div>
+      <span class="logo-text">DreamGirl AI</span>
+    </div>
+  </div>
+  <div class="user-row">
+    <div class="avatar" id="user-avatar">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    </div>
+    <span class="username" id="user-name">Username</span>
+  </div>
+
+  <!-- Welcome bonus banner -->
+  <div id="welcome-banner" style="margin:0 16px 14px;background:linear-gradient(135deg,#1a0a1a,#2d0a2d);border:1px solid #ff148033;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;">
+    <div style="font-size:28px;">🎁</div>
+    <div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:2px;">Welcome bonus active!</div>
+      <div style="font-size:12px;color:#aaa;" id="bonus-status">1 free undress + 1 free video</div>
+    </div>
+  </div>
+
+  <div class="token-card">
+    <div class="token-label">Token balance:</div>
+    <div class="token-amount" id="token-balance">0</div>
+    <div class="token-status" id="token-status">No tokens left</div>
+    <div class="token-stats">
+      <div class="token-stat">
+        <div class="stat-label">Used today</div>
+        <div class="stat-val" id="tokens-used">0</div>
+      </div>
+      <div class="token-stat">
+        <div class="stat-label">Creations made</div>
+        <div class="stat-val" id="creations-made">0</div>
+      </div>
+    </div>
+    <button class="btn-get" onclick="openSheet()">Get tokens</button>
+  </div>
+
+  <div class="section-title">Recent Activity</div>
+  <div id="activity-container">
+    <div class="activity-placeholder">No activity yet</div>
+  </div>
+</div>
+
+<!-- ===================== CHARACTER PROFILE OVERLAY ===================== -->
+<div class="overlay" id="profile-overlay">
+  <button class="overlay-back" onclick="closeProfile()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+  </button>
+  <div class="gallery-wrap" id="gallery-wrap">
+    <div class="gallery-track" id="gallery-track"></div>
+    <div class="gallery-dots" id="gallery-dots"></div>
+    <div class="gallery-gradient"></div>
+  </div>
+  <div class="profile-body">
+    <div class="profile-name-row">
+      <div class="profile-name" id="profile-name"></div>
+      <div class="profile-online"><div class="profile-online-dot"></div> Online</div>
+    </div>
+    <div class="profile-tags" id="profile-tags"></div>
+    <div class="profile-bio" id="profile-bio"></div>
+    <div class="profile-btns" id="profile-btns"></div>
+  </div>
+</div>
+
+<!-- ===================== CONTENT VIEWER ===================== -->
+<div class="viewer" id="content-viewer">
+  <div class="viewer-header">
+    <button class="viewer-back" onclick="closeViewer()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+      Back
+    </button>
+    <div class="viewer-title" id="viewer-title"></div>
+    <button class="viewer-close" onclick="closeViewer()">✕</button>
+  </div>
+  <div class="viewer-content" id="viewer-main"></div>
+  <div class="viewer-thumbs" id="viewer-thumbs"></div>
+</div>
+
+<!-- ===================== BUY TOKENS SHEET ===================== -->
+<div class="sheet-overlay" id="buy-sheet" onclick="closeSheet(event)">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Get Tokens</div>
+    <div class="sheet-subtitle">Choose a package to unlock content</div>
+    <div class="token-packages" id="token-packages"></div>
+    <button class="btn-buy" onclick="buyTokens()">Buy with Telegram Stars ⭐</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// DATA
+// ============================================================
+// ── HOW TO FILL IN URLs ──────────────────────────────────────────
+// 1. Upload files to Telegram via upload_media.py
+// 2. Copy URLs from media_urls.json into each character below
+// 3. gallery: free photos first (locked:false), then paid (locked:true)
+// ────────────────────────────────────────────────────────────────
+const CHARACTERS = [
+  {
+    id: 'yuki',
+    name: 'Yuki',
+    emoji: '🌸',
+    nationality: 'Japanese',
+    tags: ['#Shy', '#Sweet', '#Asian'],
+    bio: 'Yuki is a gentle 25-year-old from Tokyo. She loves anime, matcha tea and long conversations. She\'s playful behind her shy smile...',
+    coverColor: 'linear-gradient(135deg, #1a0a2e 0%, #2d1b4e 100%)',
+    photos: {
+      cover: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_0.jpg',
+      gallery: [
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_1.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_2.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_3.jpg', locked: true  },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_4.jpg', locked: true  },
+      ]
+    },
+    undressCost:  5,
+    explicitCost: 10,
+    videos: [],
+  },
+  {
+    id: 'fiona',
+    name: 'Fiona',
+    emoji: '🍀',
+    nationality: 'Irish',
+    tags: ['#Redhead', '#Fiery', '#Wild'],
+    bio: 'Fiona is a fiery 25-year-old from Dublin with long red curls and green eyes. She\'s adventurous, cheeky and loves to tease...',
+    coverColor: 'linear-gradient(135deg, #0a1a0a 0%, #1b3d1b 100%)',
+    photos: {
+      cover: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_5.jpg',
+      gallery: [
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_6.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_7.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_8.jpg', locked: true  },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_9.jpg', locked: true  },
+      ]
+    },
+    undressCost:  5,
+    explicitCost: 10,
+    videos: [],
+  },
+  {
+    id: 'valentina',
+    name: 'Valentina',
+    emoji: '💃',
+    nationality: 'Latina',
+    tags: ['#Curvy', '#Passionate', '#Latina'],
+    bio: 'Valentina is a hot 25-year-old Latina with dark curls and olive skin. She\'s passionate, confident and knows exactly what she wants...',
+    coverColor: 'linear-gradient(135deg, #1a0a0a 0%, #3d1b1b 100%)',
+    photos: {
+      cover: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_10.jpg',
+      gallery: [
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_11.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_12.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_13.jpg', locked: true  },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_14.jpg', locked: true  },
+      ]
+    },
+    undressCost:  5,
+    explicitCost: 10,
+    videos: [],
+  },
+  {
+    id: 'astrid',
+    name: 'Astrid',
+    emoji: '❄️',
+    nationality: 'Swedish',
+    tags: ['#Blonde', '#Nordic', '#Cool'],
+    bio: 'Astrid is a stunning 25-year-old from Stockholm with ice-blue eyes and long blonde hair. Cold on the outside, fire within...',
+    coverColor: 'linear-gradient(135deg, #0a1020 0%, #1b2d4e 100%)',
+    photos: {
+      cover: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_15.jpg',
+      gallery: [
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_16.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_17.jpg', locked: false },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_18.jpg', locked: true  },
+        { url: 'https://api.telegram.org/file/bot8647967878:AAFGiGAZp_OErNhbnDjfr23TYAQrjlghMf8/photos/file_19.jpg', locked: true  },
+      ]
+    },
+    undressCost:  5,
+    explicitCost: 10,
+    videos: [],
+  },
+];
+
+const PACKAGES = [
+  { id: 'p15',  tokens: 15,  stars: 75,  label: 'Starter',  desc: '15 tokens — 1 photo + 1 video', icon: '⭐' },
+  { id: 'p50',  tokens: 50,  stars: 220, label: 'Popular',  desc: '50 tokens — best value',        icon: '🔥', badge: 'POPULAR' },
+  { id: 'p150', tokens: 150, stars: 600, label: 'Premium',  desc: '150 tokens — heavy user',       icon: '💎' },
+];
+
+// ============================================================
+// STATE
+// ============================================================
+let state = {
+  tab: 'characters',
+  tokens: 0,
+  tokensUsed: 0,
+  creations: 0,
+  activity: [],
+  selectedPkg: 'p50',
+  currentChar: null,
+  currentAction: null,
+  currentItem: 0,
+  unlockedActions: {},   // { 'yuki_explicit': true }
+  freeUndressLeft: 1,    // 1 free undress on signup
+  freeExplicitLeft: 1,   // 1 free explicit video on signup
+};
+
+// ============================================================
+// TELEGRAM INIT
+// ============================================================
+const tg = window.Telegram?.WebApp;
+if (tg) {
+  tg.ready();
+  tg.expand();
+  tg.setHeaderColor('#0f0f0f');
+  tg.setBackgroundColor('#0f0f0f');
+  const user = tg.initDataUnsafe?.user;
+  if (user) {
+    document.getElementById('user-name').textContent = user.first_name + (user.last_name ? ' ' + user.last_name : '');
+    if (user.photo_url) {
+      document.getElementById('user-avatar').innerHTML = `<img src="${user.photo_url}" alt="">`;
+    }
+  }
+}
+
+// ============================================================
+// RENDER
+// ============================================================
+function renderCharGrid() {
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML = CHARACTERS.map(c => `
+    <div class="char-card" onclick="openProfile('${c.id}')">
+      ${c.photos.cover
+        ? `<img src="${c.photos.cover}" alt="${c.name}">`
+        : `<div class="char-card-placeholder" style="background:${c.coverColor}">${c.emoji}</div>`}
+      <div class="char-card-info">
+        <div class="char-name">${c.name}</div>
+        <div class="char-tag">${c.nationality}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderPackages() {
+  document.getElementById('token-packages').innerHTML = PACKAGES.map(p => `
+    <div class="token-pkg ${state.selectedPkg === p.id ? 'selected' : ''}" onclick="selectPkg('${p.id}')">
+      <div class="token-pkg-left">
+        <div class="token-pkg-icon">${p.icon}</div>
+        <div>
+          <div class="token-pkg-name">${p.label} — ${p.tokens} tokens ${p.badge ? `<span class="token-pkg-badge">${p.badge}</span>` : ''}</div>
+          <div class="token-pkg-desc">${p.desc}</div>
+        </div>
+      </div>
+      <div class="token-pkg-price">${p.stars}⭐</div>
+    </div>
+  `).join('');
+}
+
+function renderStats() {
+  const bal = state.tokens;
+  document.getElementById('token-balance').textContent = bal;
+  document.getElementById('token-status').textContent = bal === 0 ? 'No tokens left' : `${bal} token${bal !== 1 ? 's' : ''} available`;
+  document.getElementById('token-status').style.color = bal === 0 ? 'var(--pink)' : '#4caf50';
+  document.getElementById('tokens-used').textContent = state.tokensUsed;
+  document.getElementById('creations-made').textContent = state.creations;
+
+  // Welcome banner
+  const banner = document.getElementById('welcome-banner');
+  const bonusTxt = document.getElementById('bonus-status');
+  const u = state.freeUndressLeft, e = state.freeExplicitLeft;
+  if (u === 0 && e === 0) {
+    banner.style.display = 'none';
+  } else {
+    banner.style.display = 'flex';
+    const parts = [];
+    if (u > 0) parts.push('1 free undress');
+    if (e > 0) parts.push('1 free video');
+    bonusTxt.textContent = parts.join(' + ') + ' remaining';
+  }
+}
+
+function renderActivity() {
+  const el = document.getElementById('activity-container');
+  if (!state.activity.length) {
+    el.innerHTML = '<div class="activity-placeholder">No activity yet</div>';
+    return;
+  }
+  el.innerHTML = `<div class="activity-list">${state.activity.map(a => `
+    <div class="activity-item">
+      <div class="activity-thumb-placeholder" style="width:44px;height:44px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center;font-size:22px;">${a.emoji}</div>
+      <div class="activity-info">
+        <div class="activity-name">${a.name}</div>
+        <div class="activity-action">${a.action}</div>
+      </div>
+      <div class="activity-time">${a.time}</div>
+    </div>
+  `).join('')}</div>`;
+}
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(tab) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + tab).classList.add('active');
+  document.getElementById('nav-' + tab).classList.add('active');
+  state.tab = tab;
+}
+
+// ============================================================
+// PROFILE — swipeable gallery
+// ============================================================
+let galleryIdx = 0;
+let _galleryHandlers = null;
+
+function openProfile(charId) {
+  const c = CHARACTERS.find(x => x.id === charId);
+  if (!c) return;
+  state.currentChar = c;
+  galleryIdx = 0;
+
+  const isUnlocked = !!state.unlockedActions[`${c.id}_undress`];
+  const gallery    = c.photos.gallery;
+
+  // ── Build slides ─────────────────────────────────────────
+  document.getElementById('gallery-track').innerHTML = gallery.map((photo, i) => {
+    const blocked = photo.locked && !isUnlocked;
+    const imgHtml = photo.url
+      ? `<img src="${photo.url}" alt="" draggable="false">`
+      : `<div class="gallery-slide-ph" style="background:${c.coverColor}">${c.emoji}</div>`;
+    return `
+      <div class="gallery-slide">
+        ${imgHtml}
+        ${blocked ? `
+          <div class="gallery-slide-blur">
+            <div class="gallery-slide-blur-icon">🔒</div>
+            <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:4px;">Locked</div>
+            <button class="gallery-slide-blur-btn" onclick="unlockPhotos('${c.id}')">
+              ${state.freeUndressLeft > 0 ? '🎁 Unlock free' : `🪙 Unlock • ${c.undressCost} tokens`}
+            </button>
+          </div>` : ''}
+      </div>`;
+  }).join('');
+
+  // ── Build dots ───────────────────────────────────────────
+  document.getElementById('gallery-dots').innerHTML = gallery.map((photo, i) => {
+    const blocked = photo.locked && !isUnlocked;
+    return `<div class="gallery-dot ${i === 0 ? 'active' : ''} ${blocked ? 'locked' : ''}"></div>`;
+  }).join('');
+
+  // Reset position
+  const track = document.getElementById('gallery-track');
+  track.style.transition = 'none';
+  track.style.transform  = 'translateX(0)';
+
+  // ── Profile info ─────────────────────────────────────────
+  document.getElementById('profile-name').textContent = c.name;
+  document.getElementById('profile-tags').innerHTML   = c.tags.map(t => `<span class="profile-tag">${t}</span>`).join('');
+  document.getElementById('profile-bio').textContent  = c.bio;
+  renderProfileBtns(c);
+
+  initGallerySwipe();
+  document.getElementById('profile-overlay').classList.add('visible');
+}
+
+function renderProfileBtns(c) {
+  const isUnlockedPhotos = !!state.unlockedActions[`${c.id}_undress`];
+  const isUnlockedVideos = !!state.unlockedActions[`${c.id}_explicit`];
+  const freeU = state.freeUndressLeft  > 0;
+  const freeE = state.freeExplicitLeft > 0;
+
+  let html = '';
+
+  // Unlock photos button
+  if (!isUnlockedPhotos) {
+    html += `
+      <button class="profile-btn" style="background:linear-gradient(135deg,#ff1480,#c0005e);" onclick="unlockPhotos('${c.id}')">
+        <div class="profile-btn-left">
+          <div class="profile-btn-icon" style="background:rgba(255,255,255,.18);">💋</div>
+          <div>
+            <div class="profile-btn-label">Unlock all photos</div>
+            <div class="profile-btn-sub">${freeU ? '🎁 Use your free trial!' : `${c.photos.gallery.filter(p=>p.locked).length} photos unlocked forever`}</div>
+          </div>
+        </div>
+        <div class="profile-btn-cost">${freeU ? 'FREE' : `${c.undressCost} 🪙`}</div>
+      </button>`;
+  } else {
+    html += `<div style="text-align:center;padding:8px 0 4px;font-size:13px;color:#4caf50;font-weight:600;">✅ All photos unlocked</div>`;
+  }
+
+  // Videos button
+  if (c.videos.length === 0) {
+    html += `
+      <button class="profile-btn" style="background:var(--card2);border:1px solid var(--border);opacity:.55;cursor:default;" disabled>
+        <div class="profile-btn-left">
+          <div class="profile-btn-icon" style="background:rgba(255,20,128,.12);">🔞</div>
+          <div>
+            <div class="profile-btn-label">Explicit videos</div>
+            <div class="profile-btn-sub">Coming soon...</div>
+          </div>
+        </div>
+        <div class="profile-btn-cost" style="font-size:11px;opacity:.45;">Soon</div>
+      </button>`;
+  } else if (!isUnlockedVideos) {
+    html += `
+      <button class="profile-btn" style="background:var(--card2);border:1.5px solid var(--pink);" onclick="openAction('${c.id}','explicit')">
+        <div class="profile-btn-left">
+          <div class="profile-btn-icon" style="background:rgba(255,20,128,.18);">🔞</div>
+          <div>
+            <div class="profile-btn-label">Watch explicit videos</div>
+            <div class="profile-btn-sub">${freeE ? '🎁 Use your free trial!' : `${c.videos.length} video${c.videos.length!==1?'s':''} • ${c.explicitCost} tokens`}</div>
+          </div>
+        </div>
+        <div class="profile-btn-cost">${freeE ? 'FREE' : `${c.explicitCost} 🪙`}</div>
+      </button>`;
+  } else {
+    html += `
+      <button class="profile-btn" style="background:linear-gradient(135deg,#1a0510,#330a22);border:1.5px solid var(--pink);" onclick="openAction('${c.id}','explicit')">
+        <div class="profile-btn-left">
+          <div class="profile-btn-icon" style="background:rgba(255,20,128,.18);">🔞</div>
+          <div>
+            <div class="profile-btn-label">Watch explicit videos</div>
+            <div class="profile-btn-sub">${c.videos.length} video${c.videos.length!==1?'s':''} unlocked</div>
+          </div>
+        </div>
+        <div class="profile-btn-cost">▶️</div>
+      </button>`;
+  }
+
+  document.getElementById('profile-btns').innerHTML = html;
+}
+
+function unlockPhotos(charId) {
+  const c = CHARACTERS.find(x => x.id === charId);
+  if (!c) return;
+  const key = `${charId}_undress`;
+  if (state.unlockedActions[key]) return;
+
+  const isFree = state.freeUndressLeft > 0;
+  if (!isFree && state.tokens < c.undressCost) {
+    closeProfile();
+    openSheet();
+    showToast('Not enough tokens!');
+    return;
+  }
+
+  if (isFree) {
+    state.freeUndressLeft--;
+    showToast('🎁 Free undress used!');
+  } else {
+    state.tokens     -= c.undressCost;
+    state.tokensUsed += c.undressCost;
+    showToast(`Unlocked! ${c.undressCost} tokens used.`);
+  }
+
+  state.creations++;
+  state.unlockedActions[key] = true;
+  state.activity.unshift({ emoji: c.emoji, name: c.name, action: 'Undress', time: 'now' });
+  renderStats();
+  renderActivity();
+  // Re-open profile so blur is removed
+  openProfile(charId);
+}
+
+function closeProfile() {
+  document.getElementById('profile-overlay').classList.remove('visible');
+  state.currentChar = null;
+}
+
+// ── Gallery swipe ────────────────────────────────────────────
+function initGallerySwipe() {
+  const wrap  = document.getElementById('gallery-wrap');
+  const track = document.getElementById('gallery-track');
+
+  // Remove previous listeners
+  if (_galleryHandlers) {
+    wrap.removeEventListener('touchstart', _galleryHandlers.start);
+    wrap.removeEventListener('touchmove',  _galleryHandlers.move);
+    wrap.removeEventListener('touchend',   _galleryHandlers.end);
+  }
+
+  let tx0 = 0, ty0 = 0, dragging = false;
+
+  function slideCount() { return state.currentChar?.photos.gallery.length || 1; }
+
+  function goTo(idx) {
+    galleryIdx = Math.max(0, Math.min(slideCount() - 1, idx));
+    track.style.transition = 'transform .3s cubic-bezier(.4,0,.2,1)';
+    track.style.transform  = `translateX(${-galleryIdx * 100}%)`;
+    document.querySelectorAll('.gallery-dot').forEach((d, i) => {
+      d.classList.toggle('active', i === galleryIdx);
+    });
+  }
+
+  const start = e => {
+    tx0 = e.touches[0].clientX;
+    ty0 = e.touches[0].clientY;
+    dragging = true;
+    track.style.transition = 'none';
+  };
+  const move = e => {
+    if (!dragging) return;
+    const dx = e.touches[0].clientX - tx0;
+    const dy = e.touches[0].clientY - ty0;
+    if (Math.abs(dy) > Math.abs(dx)) { dragging = false; return; }
+    const pct = (dx / wrap.offsetWidth) * 100;
+    track.style.transform = `translateX(${(-galleryIdx * 100) + pct}%)`;
+  };
+  const end = e => {
+    if (!dragging) return;
+    dragging = false;
+    const dx = e.changedTouches[0].clientX - tx0;
+    const thr = wrap.offsetWidth * 0.25;
+    if      (dx < -thr) goTo(galleryIdx + 1);
+    else if (dx >  thr) goTo(galleryIdx - 1);
+    else                goTo(galleryIdx);
+  };
+
+  _galleryHandlers = { start, move, end };
+  wrap.addEventListener('touchstart', start, { passive: true });
+  wrap.addEventListener('touchmove',  move,  { passive: true });
+  wrap.addEventListener('touchend',   end,   { passive: true });
+}
+
+// ============================================================
+// ACTION / VIEWER  (explicit videos only)
+// ============================================================
+function openAction(charId, actionId) {
+  const c = CHARACTERS.find(x => x.id === charId);
+  if (!c || actionId !== 'explicit') return;
+
+  const key        = `${charId}_explicit`;
+  const isUnlocked = !!state.unlockedActions[key];
+  const action     = { id: 'explicit', label: 'Explicit videos', icon: '🔞',
+                       cost: c.explicitCost, items: c.videos };
+
+  state.currentChar   = c;
+  state.currentAction = action;
+  state.currentItem   = 0;
+
+  document.getElementById('viewer-title').textContent = `${c.name} — Explicit`;
+  document.getElementById('content-viewer').classList.add('visible');
+
+  if (!isUnlocked) {
+    renderViewerLocked(c, action, key);
+  } else {
+    renderViewerContent(action, 0);
+  }
+}
+
+function renderViewerLocked(c, action, key) {
+  const isFreeExplicit = action.id === 'explicit' && state.freeExplicitLeft > 0;
+  const hasTokens      = state.tokens >= action.cost;
+
+  document.getElementById('viewer-main').innerHTML = `
+    <div class="viewer-locked">
+      <div class="viewer-locked-icon">${isFreeExplicit ? '🎁' : '🔒'}</div>
+      <div class="viewer-locked-title">${action.label}</div>
+      <div class="viewer-locked-desc">
+        ${isFreeExplicit
+          ? `<span style="color:#4caf50;font-weight:600;">You have 1 free video!</span><br>Enjoy your welcome bonus 🎉`
+          : `${action.items.length} video${action.items.length!==1?'s':''} • Unlock with tokens.`
+        }
+      </div>
+      <button class="viewer-unlock-btn" onclick="unlockAction('${c.id}','${action.id}')">
+        ${isFreeExplicit ? '🎁 Use free trial' : `🪙 Unlock for ${action.cost} tokens`}
+      </button>
+      ${!isFreeExplicit && !hasTokens ? `
+        <div style="font-size:13px;color:var(--text-dim);margin-top:8px;">
+          Not enough tokens —
+          <span style="color:var(--pink);cursor:pointer;" onclick="closeViewer();openSheet()">Get tokens</span>
+        </div>` : ''}
+    </div>`;
+  document.getElementById('viewer-thumbs').innerHTML = '';
+}
+
+function renderViewerContent(action, idx) {
+  const items  = action.items;
+  const main   = document.getElementById('viewer-main');
+  const thumbs = document.getElementById('viewer-thumbs');
+
+  if (!items || items.length === 0) {
+    main.innerHTML = `
+      <div class="viewer-locked" style="gap:12px;">
+        <div style="font-size:60px;">${action.icon}</div>
+        <div style="font-size:18px;font-weight:700;">Content coming soon</div>
+        <div style="font-size:13px;color:var(--text-dim);">Videos will be added soon</div>
+      </div>`;
+    thumbs.innerHTML = '';
+    return;
+  }
+
+  const item = items[idx];
+  if (item.type === 'video') {
+    main.innerHTML = `<video src="${item.url}" autoplay loop playsinline controls style="max-width:100%;max-height:100%;"></video>`;
+  } else {
+    main.innerHTML = `<img src="${item.url}" alt="" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+  }
+
+  thumbs.innerHTML = items.map((it, i) => `
+    <div class="viewer-thumb-placeholder ${i === idx ? 'active' : ''}" onclick="viewItem(${i})">
+      ${it.type === 'video' ? '▶️' : '🖼️'}
+    </div>`).join('');
+}
+
+function viewItem(idx) {
+  state.currentItem = idx;
+  renderViewerContent(state.currentAction, idx);
+}
+
+function unlockAction(charId, actionId) {
+  const c = CHARACTERS.find(x => x.id === charId);
+  if (!c || actionId !== 'explicit') return;
+
+  const key            = `${charId}_explicit`;
+  const cost           = c.explicitCost;
+  const isFreeExplicit = state.freeExplicitLeft > 0;
+
+  if (!isFreeExplicit && state.tokens < cost) {
+    closeViewer();
+    openSheet();
+    showToast('Not enough tokens!');
+    return;
+  }
+
+  if (isFreeExplicit) {
+    state.freeExplicitLeft--;
+    showToast('🎁 Free video used!');
+  } else {
+    state.tokens     -= cost;
+    state.tokensUsed += cost;
+    showToast(`Unlocked! ${cost} tokens used.`);
+  }
+
+  state.creations++;
+  state.unlockedActions[key] = true;
+  state.activity.unshift({ emoji: c.emoji, name: c.name, action: 'Explicit', time: 'now' });
+  renderStats();
+  renderActivity();
+  renderViewerContent({ id: 'explicit', icon: '🔞', items: c.videos }, 0);
+}
+
+function closeViewer() {
+  document.getElementById('content-viewer').classList.remove('visible');
+  document.getElementById('viewer-main').innerHTML = '';
+  document.getElementById('viewer-thumbs').innerHTML = '';
+}
+
+// ============================================================
+// BUY TOKENS SHEET
+// ============================================================
+function openSheet() {
+  renderPackages();
+  document.getElementById('buy-sheet').classList.add('visible');
+}
+function closeSheet(e) {
+  if (e && e.target !== document.getElementById('buy-sheet')) return;
+  document.getElementById('buy-sheet').classList.remove('visible');
+}
+function selectPkg(id) {
+  state.selectedPkg = id;
+  renderPackages();
+}
+function buyTokens() {
+  const pkg = PACKAGES.find(p => p.id === state.selectedPkg);
+  if (!pkg) return;
+  if (tg?.openInvoice) {
+    // Real Telegram Stars payment — backend must create invoice
+    tg.openInvoice('INVOICE_LINK_HERE', status => {
+      if (status === 'paid') {
+        state.tokens += pkg.tokens;
+        renderStats();
+        closeSheet({});
+        showToast(`+${pkg.tokens} tokens added! 🎉`);
+      }
+    });
+  } else {
+    // DEV mode: add tokens directly
+    state.tokens += pkg.tokens;
+    renderStats();
+    closeSheet({});
+    showToast(`+${pkg.tokens} tokens added! (dev mode) 🎉`);
+  }
+}
+
+// ============================================================
+// TOAST
+// ============================================================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderCharGrid();
+renderStats();
+renderActivity();
+</script>
+</body>
+</html>
