@@ -171,6 +171,23 @@
   .btn-buy { width: 100%; background: var(--pink); color: #fff; font-size: 16px; font-weight: 700; padding: 15px; border-radius: 14px; border: none; cursor: pointer; }
   .btn-buy:active { opacity: .85; }
 
+  /* ---- SPLASH SCREEN ---- */
+  .splash { position: fixed; inset: 0; z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #0a0a0a; transition: opacity .5s ease, transform .5s ease; }
+  .splash.hide { opacity: 0; transform: scale(1.04); pointer-events: none; }
+  .splash-bg { position: absolute; inset: 0; background: radial-gradient(ellipse at 50% 60%, #2a0a1a 0%, #0a0a0a 70%); }
+  .splash-glow { position: absolute; width: 300px; height: 300px; border-radius: 50%; background: radial-gradient(circle, rgba(255,20,128,.18) 0%, transparent 70%); top: 50%; left: 50%; transform: translate(-50%, -60%); }
+  .splash-content { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 0; }
+  .splash-logo { width: 72px; height: 72px; background: linear-gradient(135deg, #ff1480, #c0005e); border-radius: 22px; display: flex; align-items: center; justify-content: center; font-size: 36px; margin-bottom: 20px; box-shadow: 0 0 40px rgba(255,20,128,.4); }
+  .splash-title { font-size: 32px; font-weight: 900; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .splash-title span { color: var(--pink); }
+  .splash-sub { font-size: 14px; color: var(--text-dim); margin-bottom: 48px; text-align: center; line-height: 1.5; max-width: 240px; }
+  .splash-chars { display: flex; gap: -8px; margin-bottom: 44px; }
+  .splash-avatar { width: 52px; height: 52px; border-radius: 50%; border: 2.5px solid #0a0a0a; object-fit: cover; margin-left: -10px; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 22px; overflow: hidden; }
+  .splash-avatar:first-child { margin-left: 0; }
+  .splash-btn { background: linear-gradient(135deg, #ff1480, #c0005e); color: #fff; font-size: 17px; font-weight: 800; padding: 16px 48px; border-radius: 16px; border: none; cursor: pointer; letter-spacing: 0.3px; box-shadow: 0 8px 32px rgba(255,20,128,.35); }
+  .splash-btn:active { transform: scale(.97); }
+  .splash-age { position: absolute; bottom: 24px; font-size: 11px; color: #444; }
+
   /* ---- TOAST ---- */
   .toast { position: fixed; bottom: calc(var(--nav-h) + 16px); left: 50%; transform: translateX(-50%) translateY(20px); background: #333; color: #fff; font-size: 14px; font-weight: 500; padding: 10px 20px; border-radius: 20px; opacity: 0; transition: all .3s; z-index: 500; white-space: nowrap; pointer-events: none; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -180,6 +197,25 @@
 </style>
 </head>
 <body>
+
+<!-- ===================== SPLASH SCREEN ===================== -->
+<div class="splash" id="splash">
+  <div class="splash-bg"></div>
+  <div class="splash-glow"></div>
+  <div class="splash-content">
+    <div class="splash-logo">❤️</div>
+    <div class="splash-title">Dream<span>Girl</span> AI</div>
+    <div class="splash-sub">Your personal AI girlfriend.<br>Exclusive 18+ content, just for you.</div>
+    <div class="splash-chars" id="splash-chars">
+      <div class="splash-avatar">🌸</div>
+      <div class="splash-avatar">🍀</div>
+      <div class="splash-avatar">💃</div>
+      <div class="splash-avatar">❄️</div>
+    </div>
+    <button class="splash-btn" onclick="enterApp()">Enter →</button>
+  </div>
+  <div class="splash-age">18+ Adults only</div>
+</div>
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
@@ -574,9 +610,15 @@ function openProfile(charId) {
   // ── Build slides ─────────────────────────────────────────
   document.getElementById('gallery-track').innerHTML = gallery.map((photo, i) => {
     const blocked = photo.locked && !isUnlocked;
-    const imgHtml = photo.url
-      ? `<img src="${photo.url}" alt="" draggable="false">`
-      : `<div class="gallery-slide-ph" style="background:${c.coverColor}">${c.emoji}</div>`;
+    // SECURITY: never load the real image URL for locked photos
+    let imgHtml;
+    if (blocked) {
+      imgHtml = `<div class="gallery-slide-ph" style="background:${c.coverColor};font-size:80px;filter:blur(2px);">${c.emoji}</div>`;
+    } else if (photo.url) {
+      imgHtml = `<img src="${photo.url}" alt="" draggable="false">`;
+    } else {
+      imgHtml = `<div class="gallery-slide-ph" style="background:${c.coverColor}">${c.emoji}</div>`;
+    }
     return `
       <div class="gallery-slide">
         ${imgHtml}
@@ -945,6 +987,29 @@ function showToast(msg) {
 // ============================================================
 // INIT
 // ============================================================
+// ============================================================
+// SPLASH
+// ============================================================
+function enterApp() {
+  const splash = document.getElementById('splash');
+  splash.classList.add('hide');
+  setTimeout(() => { splash.style.display = 'none'; }, 500);
+}
+
+function initSplashAvatars() {
+  const container = document.getElementById('splash-chars');
+  container.innerHTML = CHARACTERS.map(c => {
+    if (c.photos.cover) {
+      return `<div class="splash-avatar"><img src="${c.photos.cover}" style="width:100%;height:100%;object-fit:cover;"></div>`;
+    }
+    return `<div class="splash-avatar">${c.emoji}</div>`;
+  }).join('');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+initSplashAvatars();
 renderCharGrid();
 renderStats();
 renderActivity();
